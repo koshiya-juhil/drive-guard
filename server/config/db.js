@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const mongoUrl = process.env.MODE === 'prod' ? process.env.MONGO_PROD_URL : process.env.MONGO_URL;
+const mongoUrl = process.env.MODE === 'prod' ? process.env.MONGODB_PROD_URL : process.env.MONGO_URL;
 mongoose.connect(mongoUrl);
 
 const db = mongoose.connection;
