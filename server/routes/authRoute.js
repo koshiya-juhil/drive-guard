@@ -5,7 +5,7 @@ const User = require("../models/User");
 
 require("dotenv").config();
 
-const redirect_uris = ["http://localhost:3000/report"];
+const redirect_uris = [`${process.env.ORIGIN_PROD}/report`];
 
 const oAuth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
@@ -177,26 +177,10 @@ router.get("/getReport", async (req, res) => {
       }
     }
 
-    const totalFiles = allFiles.length;
-
-    console.log("totalFiles",totalFiles)
-    console.log("publicFilesCount",publicFilesCount)
-    console.log("sharedWithMultiplePeopleCount",sharedWithMultiplePeopleCount)
-    console.log("filesOwnedByOthersCount",filesOwnedByOthersCount)
-
-    let publicFileScore = (publicFilesCount / totalFiles) * 100; // weight public files heavily
-    let sharedFileScore = (sharedWithMultiplePeopleCount / totalFiles) * 50; // moderate weight for shared files
-    let externalFileScore = (filesOwnedByOthersCount / totalFiles) * 80; // high weight for external sharing
-
-    const driveScore = (publicFileScore + sharedFileScore + externalFileScore) / 3; // weighted average
-
-    console.log("driveScore", driveScore);
-
     res.status(200).send({
       publicFiles,
       peopleFiles,
       externalFiles,
-      riskScore: Math.round(driveScore),
     });
   } catch (error) {
     console.log("Error retrieving report: ", error);
