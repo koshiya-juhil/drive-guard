@@ -7,6 +7,8 @@ require("dotenv").config();
 
 const redirect_uris = [`${process.env.ORIGIN_PROD}/report`];
 
+console.log("redirect_uris", redirect_uris[0])
+
 const oAuth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
