@@ -3,9 +3,9 @@ function ReportPageHeader(props) {
   return (
     <div className="flex flex-col px-8 pt-12 pb-20 w-full bg-indigo-800 max-md:px-5 max-md:max-w-full">
       <div className="flex gap-5 justify-between items-center w-full max-md:flex-wrap max-md:max-w-full">
-        <div onClick={() => props.revokeAccess()} className="justify-center cursor-pointer self-stretch px-7 py-5 text-sm font-semibold leading-5 text-center text-red-300 rounded-lg border border-pink-700 border-solid max-md:px-5">
+        <button onClick={() => props.revokeAccess()} className="justify-center bg-transparent cursor-pointer self-stretch px-7 py-5 text-sm font-semibold leading-5 text-center text-red-300 rounded-lg border border-pink-700 border-solid max-md:px-5">
           Revoke access
-        </div>
+        </button>
         <img
           loading="lazy"
           srcSet="https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&width=100 100w, https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&width=200 200w, https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&width=400 400w, https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&width=800 800w, https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&width=1200 1200w, https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&width=1600 1600w, https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&width=2000 2000w, https://cdn.builder.io/api/v1/image/assets/TEMP/bb3d6e0b0644deb8b2c65feec25fbf6887c413845605264c2f370a7620598ab6?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&"

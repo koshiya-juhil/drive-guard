@@ -87,7 +87,7 @@ function PeopleReport() {
                           className="w-4 aspect-square shrink-0"
                           alt="File icon"
                         />
-                        <span className="flex-auto">{file.name}</span>
+                        <span className="w-fit overflow-hidden break-words whitespace-normal">{file.name}</span>
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex items-center w-fit gap-3 px-3 py-1.5 bg-gray-100 rounded-full">

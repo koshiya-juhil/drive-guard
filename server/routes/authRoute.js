@@ -5,7 +5,7 @@ const User = require("../models/User");
 
 require("dotenv").config();
 
-const redirect_uris = [`${process.env.ORIGIN_PROD}/report`];
+const redirect_uris = [`${process.env.MODE === 'prod' ?  process.env.ORIGIN_PROD : process.env.ORIGIN_DEV}/report`];
 
 console.log("redirect_uris", redirect_uris[0])
 
@@ -111,10 +111,6 @@ router.get("/getReport", async (req, res) => {
       nextPageToken = fileList.data.nextPageToken;
     } while (nextPageToken);
 
-    let publicFilesCount = 0;
-    let sharedWithMultiplePeopleCount = 0;
-    let filesOwnedByOthersCount = 0;
-
     const publicFiles = [];
     const peopleFiles = [];
     const externalFiles = [];
@@ -173,9 +169,6 @@ router.get("/getReport", async (req, res) => {
           publicFiles.push(file);
         }
 
-        // if(file.isPublic) publicFilesCount++;
-        // else if(file.shared > 1) sharedWithMultiplePeopleCount++;
-        // else if(file.sharedtome) filesOwnedByOthersCount++;
       }
     }
 
@@ -193,7 +186,11 @@ router.get("/getReport", async (req, res) => {
 router.post("/revokeaccess", async (req, res) => {
     try {
         const email = req.query.email;
-        google.accounts.id.revoke(email, done => console.log('Consent revoked'));
+        const user = await User.findOne({ email: email });
+        const token = oAuth2Client.credentials.refresh_token || user.refresh_token;
+
+        console.log("token", token);
+        oAuth2Client.revokeToken(token)
     
         await User.deleteOne({ email: email });
     
