@@ -28,6 +28,9 @@ const authUrl = oAuth2Client.generateAuthUrl({
 
 router.get("/getAuthUrl", (req, res) => {
   res.status(200).send(authUrl);
+  // setTimeout(() => {
+  //   res.status(200).send(authUrl);
+  // }, 3000);
 });
 
 router.post("/getToken", async (req, res) => {

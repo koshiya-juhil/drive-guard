@@ -43,8 +43,6 @@ export default function RiskReportController() {
                 data: { code: code }
             })
 
-            console.log("response ", response.data);
-
             sessionStorage.setItem('user', response.data.email);
 
             window.history.replaceState({}, document.title, "/report");
@@ -67,8 +65,6 @@ export default function RiskReportController() {
                 data: {}
             })
 
-            console.log("response", response.data);
-
             setReportData(response.data);
             
         } catch (error) {
@@ -79,15 +75,14 @@ export default function RiskReportController() {
     async function revokeAccess(){
         try {
             const email = sessionStorage.getItem('user');
-          const response = await axios({
-            method: 'post',
-            url: `${Config.serverUrl}/revokeaccess?email=${email}`
-          });
+            await axios({
+                method: 'post',
+                url: `${Config.serverUrl}/revokeaccess?email=${email}`
+            });
 
-          sessionStorage.removeItem('user');
-          navigate('/');
+            sessionStorage.removeItem('user');
+            navigate('/');
 
-          console.log("response", response);
         } catch (error) {
           console.log("error", error);
         }
