@@ -5,6 +5,73 @@ function ReportHeader() {
   
   const reportData = useContext(ReportContext);
 
+  // Get risk data from context (calculated in controller)
+  const riskData = reportData?.riskScore || { score: 0, level: 'MINIMAL', color: 'bg-green-400' };
+
+  // Dynamic circular progress component
+  const CircularProgress = ({ score, level }) => {
+    const radius = 70;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDasharray = circumference;
+    const strokeDashoffset = circumference - (score / 100) * circumference;
+    
+    // Get stroke color based on risk level
+    const getStrokeColor = (level) => {
+      switch(level) {
+        case 'HIGH': return '#ef4444'; // red-500
+        case 'MEDIUM': return '#f97316'; // orange-500
+        case 'LOW': return '#eab308'; // yellow-500
+        case 'MINIMAL': return '#22c55e'; // green-500
+        default: return '#22c55e';
+      }
+    };
+
+    return (
+      <div className="relative flex items-center justify-center w-48 h-48">
+        <svg
+          className="transform -rotate-90 w-full h-full"
+          width="192"
+          height="192"
+          viewBox="0 0 192 192"
+        >
+          {/* Background circle */}
+          <circle
+            cx="96"
+            cy="96"
+            r={radius}
+            stroke="#e5e7eb"
+            strokeWidth="8"
+            fill="transparent"
+            className="opacity-20"
+          />
+          {/* Progress circle */}
+          <circle
+            cx="96"
+            cy="96"
+            r={radius}
+            stroke={getStrokeColor(level)}
+            strokeWidth="8"
+            fill="transparent"
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        
+        {/* Content in center */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <div className="text-xs font-semibold leading-4 text-gray-700 uppercase mb-2">
+            Risk Score
+          </div>
+          <div className={`text-5xl font-light leading-10 max-md:text-4xl ${riskData.score >= 70 ? 'text-red-500' : riskData.score >= 40 ? 'text-orange-400' : riskData.score >= 20 ? 'text-yellow-500' : 'text-green-500'}`}>
+            {score}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="flex gap-5 justify-between items-start px-12 pb-8 w-full text-gray-700 border-b border-gray-300 border-solid max-md:flex-wrap max-md:px-5 max-md:max-w-full">
@@ -20,38 +87,21 @@ function ReportHeader() {
           <div className="grow my-auto text-sm font-semibold leading-5">
             Risk Score:
           </div>
-          <div className="flex gap-2 justify-center p-3 text-base font-medium tracking-wider leading-6 uppercase whitespace-nowrap rounded-lg bg-orange-400 bg-opacity-10">
+          <div className={`flex gap-2 justify-center p-3 text-base font-medium tracking-wider leading-6 uppercase whitespace-nowrap rounded-lg ${riskData.color} bg-opacity-10`}>
             <img
               loading="lazy"
               src="https://cdn.builder.io/api/v1/image/assets/TEMP/a4201dcc75a5ae6a6941b46b084d6445a33e47f52bd6f588d4f82201d52eed11?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&"
               className="shrink-0 w-4 aspect-square"
             />
-            <div>High</div>
+            <div>{riskData.level}</div>
           </div>
         </div>
       </div>
       <div className="self-center px-5 mt-12 w-full max-w-[1288px] max-md:mt-10 max-md:max-w-full">
         <div className="flex gap-5 max-md:flex-col max-md:gap-0">
           <div className="flex flex-col w-3/12 max-md:ml-0 max-md:w-full">
-            <div className="flex overflow-hidden relative flex-col items-center self-stretch px-14 pt-16 pb-8 my-auto text-center aspect-[1.22] max-md:px-5 max-md:mt-10">
-              <img
-                loading="lazy"
-                src="https://cdn.builder.io/api/v1/image/assets/TEMP/c20682c65e2d42e5a194c914f27a3f0f189b90e9a7187ce0a584829f68a44194?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&"
-                className="object-cover absolute inset-0 size-full"
-              />
-              <div className="flex overflow-hidden relative flex-col px-14 py-11 aspect-[1.32] max-md:px-5">
-                <img
-                  loading="lazy"
-                  src="https://cdn.builder.io/api/v1/image/assets/TEMP/9c714ddb2926658c26d17ad859fce6e9e169ca2e9899e2fac3508d06184d9d0f?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&"
-                  className="object-cover absolute inset-0 size-full"
-                />
-                <div className="relative text-xs font-semibold leading-4 text-gray-700 uppercase">
-                  Risk Score
-                </div>
-                <div className="relative mt-2.5 text-5xl font-light leading-10 text-orange-400 max-md:text-4xl">
-                  75
-                </div>
-              </div>
+            <div className="flex items-center justify-center self-stretch my-auto max-md:mt-10">
+              <CircularProgress score={riskData.score} level={riskData.level} />
             </div>
           </div>
           <div className="flex flex-col ml-5 w-3/12 max-md:ml-0 max-md:w-full">

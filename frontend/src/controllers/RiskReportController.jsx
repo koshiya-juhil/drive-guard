@@ -10,10 +10,73 @@ export default function RiskReportController() {
     const navigate = useNavigate();
 
     const [reportData, setReportData] = useState({});
+    const [loading, setLoading] = useState(true);
+
+    // Dynamic Risk Calculation Algorithm
+    const calculateRiskScore = (data) => {
+        if (!data || Object.keys(data).length === 0) {
+            return { score: 0, level: 'MINIMAL', color: 'bg-green-400' };
+        }
+
+        const publicFiles = data.publicFiles?.length || 0;
+        const peopleFiles = data.peopleFiles?.length || 0;
+        const externalFiles = data.externalFiles?.length || 0;
+
+        // Calculate total files that have any sharing permissions
+        const totalSharedFiles = publicFiles + externalFiles;
+
+        // Risk Scoring Algorithm (0-100 scale)
+        let riskScore = 0;
+
+        // Public Files Risk (Highest Priority - up to 60 points)
+        // Each public file adds significant risk as it's accessible to anyone
+        if (publicFiles > 0) {
+            riskScore += Math.min(60, publicFiles * 15 + 20); // 20 base + 15 per file, max 60
+        }
+
+        // External Sharing Risk (Medium Priority - up to 25 points)
+        // Files shared with specific people outside organization
+        if (externalFiles > 0) {
+            riskScore += Math.min(25, Math.sqrt(externalFiles) * 8); // Logarithmic scale
+        }
+
+        // People Access Risk (Lower Priority - up to 15 points)
+        // More people having access increases risk
+        if (peopleFiles > 0) {
+            riskScore += Math.min(15, Math.log(peopleFiles + 1) * 5); // Logarithmic growth
+        }
+
+        // Total shared files amplifier (bonus risk for high volume)
+        if (totalSharedFiles > 10) {
+            riskScore += Math.min(10, (totalSharedFiles - 10) * 0.5);
+        }
+
+        // Cap the score at 100
+        riskScore = Math.min(100, Math.round(riskScore));
+
+        // Determine risk level and color
+        let level, color;
+        if (riskScore >= 70) {
+            level = 'HIGH';
+            color = 'bg-red-400';
+        } else if (riskScore >= 40) {
+            level = 'MEDIUM';
+            color = 'bg-orange-400';
+        } else if (riskScore >= 20) {
+            level = 'LOW';
+            color = 'bg-yellow-400';
+        } else {
+            level = 'MINIMAL';
+            color = 'bg-green-400';
+        }
+
+        return { score: riskScore, level, color };
+    };
 
     useEffect(() => {
 
         async function runUseEffect(){
+            setLoading(true);
             let userEmail = sessionStorage.getItem('user');
     
             if(!userEmail){
@@ -24,11 +87,12 @@ export default function RiskReportController() {
                 }
                 else {
                     navigate('/');
+                    return;
                 }
             }
 
-            getReport(userEmail);
-            
+            await getReport(userEmail);
+            setLoading(false);
         }
 
         runUseEffect();
@@ -51,6 +115,7 @@ export default function RiskReportController() {
             
         } catch (error) {
             console.log("error ", error);
+            setLoading(false);
         }
     }
 
@@ -65,10 +130,20 @@ export default function RiskReportController() {
                 data: {}
             })
 
-            setReportData(response.data);
+            // Calculate risk score and add it to the report data
+            const rawData = response.data;
+            const riskData = calculateRiskScore(rawData);
+            
+            const enrichedReportData = {
+                ...rawData,
+                riskScore: riskData
+            };
+
+            setReportData(enrichedReportData);
             
         } catch (error) {
             console.log("error", error)
+            setLoading(false);
         }
     }
 
@@ -88,10 +163,14 @@ export default function RiskReportController() {
         }
       }
     
-    
+    // Enhanced context value with loading state
+    const contextValue = {
+        ...reportData,
+        loading: loading
+    };
 
     return (
-        <ReportContext.Provider value={reportData}>
+        <ReportContext.Provider value={contextValue}>
             <RiskReportView 
                 revokeAccess={revokeAccess}
             />

@@ -24,6 +24,7 @@ function MainContent() {
 
       window.location.href = response.data;
       // navigate(response.data, { replace: true });
+      setLoading(false);
     } catch (error) {
       console.log("error ", error);
       setLoading(false);

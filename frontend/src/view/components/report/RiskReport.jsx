@@ -2,11 +2,15 @@ import ReportHeader from "./ReportHeader";
 import PublicReport from "./PublicReport";
 import PeopleReport from "./PeopleReport";
 import ExternalReport from "./ExternalReport";
+import Findings from "./Findings";
 
 function RiskReport() {
   return (
     <div className="flex z-10 flex-col self-center pt-10 mt-10rem w-full rounded-xl shadow-sm bg-slate-50 max-w-[1376px] max-md:max-w-full">
       <ReportHeader />
+      
+      {/* Findings Section */}
+      <Findings />
 
       {/* Report Details */}
       <PublicReport />
