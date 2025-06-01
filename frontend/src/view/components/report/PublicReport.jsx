@@ -1,10 +1,15 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import ReportContext from "../../../context/ReportContext";
+import axios from "axios";
+import Config from "../../../Config";
 
 function PublicReport() {
 
   const reportData = useContext(ReportContext);
   const publicFiles = reportData?.publicFiles || [];
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState(null);
 
   // Function to open Google Drive file
   const openInDrive = (fileId, mimeType) => {
@@ -57,6 +62,71 @@ function PublicReport() {
     color: '#6b7280', // Gray color for the icon
   };
 
+  // Handle checkbox selection
+  const handleSelectFile = (fileId) => {
+    if (selectedFiles.includes(fileId)) {
+      setSelectedFiles(selectedFiles.filter(id => id !== fileId));
+    } else {
+      setSelectedFiles([...selectedFiles, fileId]);
+    }
+  };
+
+  // Select or deselect all files
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedFiles(publicFiles.map(file => file.id));
+    } else {
+      setSelectedFiles([]);
+    }
+  };
+
+  // Update access permissions for selected files
+  const updateAccessPermissions = async (newAccessLevel) => {
+    if (selectedFiles.length === 0) {
+      setUpdateMessage({ type: 'error', text: 'Please select at least one file' });
+      setTimeout(() => setUpdateMessage(null), 3000);
+      return;
+    }
+
+    setIsUpdating(true);
+    setUpdateMessage({ type: 'info', text: 'Updating access permissions...' });
+    
+    try {
+      const email = sessionStorage.getItem('user');
+      const response = await axios({
+        method: 'post',
+        url: `${Config.serverUrl}/updatePermissions`,
+        data: { 
+          email,
+          fileIds: selectedFiles,
+          accessLevel: newAccessLevel
+        }
+      });
+
+      console.log("response", response);
+      
+      setUpdateMessage({ 
+        type: 'success', 
+        text: `Successfully updated ${selectedFiles.length} files to ${newAccessLevel}`
+      });
+      
+      // Clear selected files
+      setSelectedFiles([]);
+      
+      // Refresh the report data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating permissions:", error);
+      setUpdateMessage({ 
+        type: 'error', 
+        text: `Error updating permissions: ${error.response?.data || error.message}`
+      });
+    } finally {
+      setIsUpdating(false);
+      setTimeout(() => setUpdateMessage(null), 5000);
+    }
+  };
+
   return (
     <div className="flex flex-col justify-center px-12 py-14 mt-12 text-gray-700 border-t border-b border-gray-300 border-solid max-md:px-5 max-md:mt-10 max-md:max-w-full">
       <div className="flex gap-5 self-start text-3xl font-extralight leading-9 max-md:flex-wrap">
@@ -65,10 +135,56 @@ function PublicReport() {
           {publicFiles?.length || 0} files are publicly accessible for anyone with the link
         </div>
       </div>
-      <table className="w-full mt-6 border border-solid shadow-md">
+      
+      {/* Bulk Actions */}
+      {publicFiles.length > 0 && (
+        <div className="flex items-center my-4 space-x-4">
+          <div className="flex items-center">
+            <input 
+              type="checkbox" 
+              id="selectAll" 
+              className="w-4 h-4 mr-2 cursor-pointer" 
+              checked={selectedFiles.length === publicFiles.length && publicFiles.length > 0}
+              onChange={handleSelectAll}
+            />
+            <label htmlFor="selectAll" className="cursor-pointer">Select All</label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <span className="font-medium">{selectedFiles.length} files selected</span>
+            <button
+              className="px-3 py-1 text-sm text-gray-700 bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={selectedFiles.length === 0 || isUpdating}
+              onClick={() => updateAccessPermissions('private')}
+            >
+              Make Private
+            </button>
+            <button
+              className="px-3 py-1 text-sm text-gray-700 bg-orange-600 rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={selectedFiles.length === 0 || isUpdating}
+              onClick={() => updateAccessPermissions('domain')}
+            >
+              Restrict to Domain
+            </button>
+          </div>
+          
+          {/* Status Message */}
+          {updateMessage && (
+            <div className={`px-4 py-2 rounded text-gray-700 ${
+              updateMessage.type === 'error' ? 'bg-red-500' : 
+              updateMessage.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+            }`}>
+              {updateMessage.text}
+            </div>
+          )}
+        </div>
+      )}
+      
+      <table className="w-full mt-2 border border-solid shadow-md">
         <thead>
           <tr className="text-base font-semibold leading-6 text-left border-b border-solid">
-            <th className="pr-20 pl-8 py-4">File name</th>
+            <th className="px-3 py-4 w-10">Select</th>
+            <th className="pr-20 pl-3 py-4">File name</th>
             <th className="px-3 py-4">Access setting</th>
             <th className="px-3 py-4">Shared with</th>
             <th className="px-3 py-4">Created by</th>
@@ -77,7 +193,15 @@ function PublicReport() {
         <tbody>
           {publicFiles?.map((file, index) => (
             <tr key={index} className="text-base leading-6 text-left border-b border-solid">
-              <td className="flex items-center gap-3 px-8 py-4 whitespace-nowrap">
+              <td className="px-3 py-4">
+                <input 
+                  type="checkbox"
+                  className="w-4 h-4 cursor-pointer"
+                  checked={selectedFiles.includes(file.id)}
+                  onChange={() => handleSelectFile(file.id)}
+                />
+              </td>
+              <td className="flex items-center gap-3 px-3 py-4 whitespace-nowrap">
                 <img
                   loading="lazy"
                   src="https://cdn.builder.io/api/v1/image/assets/TEMP/40ee81af89e7be9e5c573e83f5c0a926a811711e74386276a4453f64def7ace4?apiKey=ffe900c0da0f45f9af6d3b4f4c162962&"

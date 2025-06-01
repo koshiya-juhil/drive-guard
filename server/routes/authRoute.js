@@ -18,6 +18,7 @@ const oAuth2Client = new google.auth.OAuth2(
 const SCOPE = [
   "https://www.googleapis.com/auth/drive.metadata.readonly",
   "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/drive",
 ];
 
 const authUrl = oAuth2Client.generateAuthUrl({
@@ -183,6 +184,102 @@ router.get("/getReport", async (req, res) => {
   } catch (error) {
     console.log("Error retrieving report: ", error);
     res.status(500).send("Error retrieving report");
+  }
+});
+
+// Update permissions for multiple files
+router.post("/updatePermissions", async (req, res) => {
+  try {
+    const { email, fileIds, accessLevel } = req.body;
+    
+    if (!email) return res.status(400).send("Email is required");
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).send("Valid file IDs are required");
+    }
+    if (!accessLevel) return res.status(400).send("Access level is required");
+    
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).send("User not found");
+
+    // Set credentials for the OAuth client
+    oAuth2Client.setCredentials({
+      access_token: user.access_token,
+      refresh_token: user.refresh_token,
+    });
+
+    // Create Drive client with OAuth
+    const driveClient = google.drive({
+      version: "v3",
+      auth: oAuth2Client,
+    });
+
+    // Process each file
+    const results = [];
+    const errors = [];
+
+    for (const fileId of fileIds) {
+      try {
+        // First, get current permissions to find the "anyone" permission
+        const permissionsResponse = await driveClient.permissions.list({
+          fileId: fileId,
+          fields: "permissions(id, type, role)",
+        });
+
+        const permissions = permissionsResponse.data.permissions || [];
+        const anyonePermission = permissions.find(p => p.type === "anyone");
+
+        // console.log("permissions", permissions);
+        // console.log("anyonePermission", anyonePermission);
+        // console.log("accessLevel", accessLevel);
+        
+        if (anyonePermission) {
+          if (accessLevel === 'private') {
+            // Remove the "anyone" permission to make the file private
+            const response = await driveClient.permissions.delete({
+              fileId: fileId,
+              permissionId: anyonePermission.id,
+            });
+
+            // console.log("response", response);
+          } else if (accessLevel === 'domain') {
+            // Remove the "anyone" permission
+            const response = await driveClient.permissions.delete({
+              fileId: fileId,
+              permissionId: anyonePermission.id,
+            });
+
+            // console.log("response", response);
+            
+            // Add a domain-wide permission
+            const domainName = email.split('@')[1]; // Extract domain from email
+            const domainResponse = await driveClient.permissions.create({
+              fileId: fileId,
+              requestBody: {
+                type: "domain",
+                role: "reader",
+                domain: domainName,
+              },
+            });
+
+            // console.log("domainResponse", domainResponse);
+          }
+        }
+        
+        results.push({ fileId, success: true });
+      } catch (error) {
+        console.error(`Error updating permissions for file ${fileId}:`, error);
+        errors.push({ fileId, error: error.message });
+      }
+    }
+
+    res.status(200).json({
+      message: `Updated permissions for ${results.length} files`,
+      success: results,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error) {
+    console.error("Error updating permissions:", error);
+    res.status(500).send("Error updating permissions");
   }
 });
 
