@@ -12,7 +12,18 @@ function MainContent() {
     if(loading) return;
     setLoading(true);
 
+    // Check if user is already authenticated
+    const existingUser = sessionStorage.getItem("user");
+    
+    if (existingUser) {
+      // User already authenticated, redirect to report page
+      window.location.href = "/report";
+      return;
+    }
+    
+    // Only clear session if we don't have a user
     sessionStorage.removeItem("user");
+    
     try {
       const response = await axios({
         method: "get",

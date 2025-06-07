@@ -116,11 +116,12 @@ export default function RiskReportController() {
         } catch (error) {
             console.log("error ", error);
             setLoading(false);
+            return null;
         }
     }
 
     async function getReport(userEmail){
-
+        setLoading(true);
         if(!userEmail) userEmail = sessionStorage.getItem('user');
 
         try {
@@ -140,9 +141,15 @@ export default function RiskReportController() {
             };
 
             setReportData(enrichedReportData);
+            setLoading(false);
             
         } catch (error) {
-            console.log("error", error)
+            console.log("error", error);
+            // If we get an auth error, we need to re-authenticate
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                sessionStorage.removeItem('user');
+                navigate('/');
+            }
             setLoading(false);
         }
     }

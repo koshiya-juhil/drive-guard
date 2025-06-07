@@ -25,6 +25,7 @@ const authUrl = oAuth2Client.generateAuthUrl({
   access_type: "offline",
   scope: SCOPE,
   include_granted_scopes: true,
+  prompt: "consent"
 });
 
 router.get("/getAuthUrl", (req, res) => {
@@ -43,6 +44,12 @@ router.post("/getToken", async (req, res) => {
 
     const accessToken = tokens.access_token;
     const refreshToken = tokens.refresh_token;
+    
+    if (!accessToken) {
+      console.error("No access token received from OAuth response");
+      return res.status(400).send("Authentication failed: No access token received");
+    }
+    
     oAuth2Client.setCredentials({
       access_token: accessToken,
       refresh_token: refreshToken,
@@ -63,12 +70,12 @@ router.post("/getToken", async (req, res) => {
       await user.save();
     } else {
       // create new user
-      const userDocument = new User({
-        email: email,
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      await userDocument.save();
+        const userDocument = new User({
+          email: email,
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        await userDocument.save();
     }
 
     res.status(200).send({ email: email, msg: "Authentication successfull" });
@@ -85,11 +92,11 @@ const drive = google.drive({
 
 router.get("/getReport", async (req, res) => {
   const email = req.query.email;
-  const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email: email });
 
   if (!user) return res.status(404).send("User not found");
-
-  oAuth2Client.setCredentials({
+    
+    oAuth2Client.setCredentials({
     access_token: user.access_token,
     refresh_token: user.refresh_token,
   });
@@ -239,16 +246,12 @@ router.post("/updatePermissions", async (req, res) => {
               fileId: fileId,
               permissionId: anyonePermission.id,
             });
-
-            // console.log("response", response);
           } else if (accessLevel === 'domain') {
             // Remove the "anyone" permission
             const response = await driveClient.permissions.delete({
               fileId: fileId,
               permissionId: anyonePermission.id,
             });
-
-            // console.log("response", response);
             
             // Add a domain-wide permission
             const domainName = email.split('@')[1]; // Extract domain from email
@@ -260,8 +263,6 @@ router.post("/updatePermissions", async (req, res) => {
                 domain: domainName,
               },
             });
-
-            // console.log("domainResponse", domainResponse);
           }
         }
         
@@ -290,7 +291,7 @@ router.post("/revokeaccess", async (req, res) => {
         const token = oAuth2Client.credentials.refresh_token || user.refresh_token;
 
         console.log("token", token);
-        oAuth2Client.revokeToken(token)
+        oAuth2Client.revokeToken(token);
     
         await User.deleteOne({ email: email });
     
