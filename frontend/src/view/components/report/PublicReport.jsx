@@ -102,8 +102,6 @@ function PublicReport() {
           accessLevel: newAccessLevel
         }
       });
-
-      console.log("response", response);
       
       setUpdateMessage({ 
         type: 'success', 
@@ -138,41 +136,44 @@ function PublicReport() {
       
       {/* Bulk Actions */}
       {publicFiles.length > 0 && (
-        <div className="flex items-center my-4 space-x-4">
+        <div className="flex flex-wrap items-center my-6 gap-6">
           <div className="flex items-center">
             <input 
               type="checkbox" 
               id="selectAll" 
-              className="w-4 h-4 mr-2 cursor-pointer" 
+              className="w-5 h-5 mr-3 cursor-pointer accent-blue-600" 
               checked={selectedFiles.length === publicFiles.length && publicFiles.length > 0}
               onChange={handleSelectAll}
             />
-            <label htmlFor="selectAll" className="cursor-pointer">Select All</label>
+            <label htmlFor="selectAll" className="cursor-pointer text-base font-medium">Select All</label>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <span className="font-medium">{selectedFiles.length} files selected</span>
-            <button
-              className="px-3 py-1 text-sm text-gray-700 bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={selectedFiles.length === 0 || isUpdating}
-              onClick={() => updateAccessPermissions('private')}
-            >
-              Make Private
-            </button>
-            <button
-              className="px-3 py-1 text-sm text-gray-700 bg-orange-600 rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={selectedFiles.length === 0 || isUpdating}
-              onClick={() => updateAccessPermissions('domain')}
-            >
-              Restrict to Domain
-            </button>
+          <div className="flex items-center">
+            <span className="font-medium text-base mr-4">{selectedFiles.length} files selected</span>
+            <div className="flex gap-3">
+              <button
+                className="px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                disabled={selectedFiles.length === 0 || isUpdating}
+                onClick={() => updateAccessPermissions('private')}
+              >
+                Remove Public Access
+              </button>
+              {/* <button
+                className="px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                disabled={selectedFiles.length === 0 || isUpdating}
+                onClick={() => updateAccessPermissions('domain')}
+              >
+                Restrict to Domain
+              </button> */}
+            </div>
           </div>
           
           {/* Status Message */}
           {updateMessage && (
-            <div className={`px-4 py-2 rounded text-gray-700 ${
-              updateMessage.type === 'error' ? 'bg-red-500' : 
-              updateMessage.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+            <div className={`px-4 py-2 rounded-md text-gray-800 font-medium border ${
+              updateMessage.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 
+              updateMessage.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 
+              'bg-blue-50 border-blue-200 text-blue-700'
             }`}>
               {updateMessage.text}
             </div>

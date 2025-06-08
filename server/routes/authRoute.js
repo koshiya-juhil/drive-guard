@@ -7,8 +7,6 @@ require("dotenv").config();
 
 const redirect_uris = [`${process.env.MODE === 'prod' ?  process.env.ORIGIN_PROD : process.env.ORIGIN_DEV}/report`];
 
-console.log("redirect_uris", redirect_uris[0])
-
 const oAuth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
@@ -55,32 +53,45 @@ router.post("/getToken", async (req, res) => {
       refresh_token: refreshToken,
     });
 
+    // Get user info from token
     const tokenInfo = await oAuth2Client.getTokenInfo(accessToken);
     const email = tokenInfo.email;
 
-    console.log("accessToken", accessToken);
-    console.log("refreshToken", refreshToken);
-
     let user = await User.findOne({ email: email });
-    console.log("user ->  >>> ", user);
+    
     // if user exist update tokens
     if (user) {
       user.access_token = accessToken;
-      user.refresh_token = refreshToken;
+      // Only update refresh token if we received a new one
+      if (refreshToken) {
+        user.refresh_token = refreshToken;
+      }
       await user.save();
     } else {
       // create new user
-        const userDocument = new User({
-          email: email,
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        await userDocument.save();
+      // Make sure we have a refresh token for new users
+      if (!refreshToken) {
+        console.error("No refresh token received for new user");
+        return res.status(400).send("Authentication failed: No refresh token received");
+      }
+      
+      const userDocument = new User({
+        email: email,
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      await userDocument.save();
     }
 
-    res.status(200).send({ email: email, msg: "Authentication successfull" });
+    res.status(200).send({ email: email, msg: "Authentication successful" });
   } catch (error) {
     console.log("error", error);
+    
+    // Provide more descriptive error messages
+    if (error.message && error.message.includes("invalid_grant")) {
+      return res.status(400).send("Authentication failed: Invalid or expired authorization code");
+    }
+    
     res.status(500).send("Internal Server Error");
   }
 });
@@ -92,22 +103,45 @@ const drive = google.drive({
 
 router.get("/getReport", async (req, res) => {
   const email = req.query.email;
-    const user = await User.findOne({ email: email });
+  const user = await User.findOne({ email: email });
 
   if (!user) return res.status(404).send("User not found");
-    
-    oAuth2Client.setCredentials({
-    access_token: user.access_token,
-    refresh_token: user.refresh_token,
-  });
 
   try {
-    // const q = `visibility='anyoneWithLink' and '${email}' in owners`;
-    // const publicFiles = await drive.files.list({
-    //     q: `visibility='anyoneWithLink' and '${email}' in owners`,
-    //     fields: "files(id, name, mimeType, owners, permissions)",
-    // })
+    // Use decryption methods to get the actual tokens
+    const decryptedTokens = user.decryptedTokens;
 
+    oAuth2Client.setCredentials({
+      access_token: decryptedTokens.access_token,
+      refresh_token: decryptedTokens.refresh_token,
+    });
+
+    // Verify token is valid by making a test request
+    try {
+      await oAuth2Client.getTokenInfo(decryptedTokens.access_token);
+    } catch (tokenError) {
+      console.log("Token validation error:", tokenError.message);
+      
+      // Try to refresh the token
+      try {
+        const { credentials } = await oAuth2Client.refreshAccessToken();
+        
+        // Update user with new tokens
+        user.access_token = credentials.access_token;
+        if (credentials.refresh_token) {
+          user.refresh_token = credentials.refresh_token;
+        }
+        await user.save();
+        
+        // Update credentials for current request
+        oAuth2Client.setCredentials(credentials);
+      } catch (refreshError) {
+        console.log("Token refresh failed:", refreshError.message);
+        return res.status(401).send("Authentication expired. Please log in again.");
+      }
+    }
+
+    // Continue with the existing code to get files
     let allFiles = [];
     let nextPageToken = null;
 
@@ -208,10 +242,13 @@ router.post("/updatePermissions", async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).send("User not found");
 
+    // Get decrypted tokens
+    const decryptedTokens = user.decryptedTokens;
+
     // Set credentials for the OAuth client
     oAuth2Client.setCredentials({
-      access_token: user.access_token,
-      refresh_token: user.refresh_token,
+      access_token: decryptedTokens.access_token,
+      refresh_token: decryptedTokens.refresh_token,
     });
 
     // Create Drive client with OAuth
@@ -235,10 +272,6 @@ router.post("/updatePermissions", async (req, res) => {
         const permissions = permissionsResponse.data.permissions || [];
         const anyonePermission = permissions.find(p => p.type === "anyone");
 
-        // console.log("permissions", permissions);
-        // console.log("anyonePermission", anyonePermission);
-        // console.log("accessLevel", accessLevel);
-        
         if (anyonePermission) {
           if (accessLevel === 'private') {
             // Remove the "anyone" permission to make the file private
@@ -287,18 +320,32 @@ router.post("/updatePermissions", async (req, res) => {
 router.post("/revokeaccess", async (req, res) => {
     try {
         const email = req.query.email;
+        if (!email) {
+            return res.status(400).send("Email is required");
+        }
+        
         const user = await User.findOne({ email: email });
-        const token = oAuth2Client.credentials.refresh_token || user.refresh_token;
-
-        console.log("token", token);
-        oAuth2Client.revokeToken(token);
+        
+        if (!user) return res.status(404).send("User not found");
+        
+        try {
+            // Get decrypted refresh token
+            const decryptedTokens = user.decryptedTokens;
+            
+            // Attempt to revoke the token
+            await oAuth2Client.revokeToken(decryptedTokens.refresh_token);
+        } catch (revokeError) {
+            console.log("Error revoking token:", revokeError);
+            // Continue with user deletion even if token revocation fails
+        }
     
+        // Delete the user from database
         await User.deleteOne({ email: email });
     
-        res.status(200).send('Revoked successfully');
+        res.status(200).send('Access revoked successfully');
     } catch (error) {
-        console.log("Error revocing user: ", error);
-        res.status(500).send("Error revocing user");    
+        console.log("Error revoking user: ", error);
+        res.status(500).send("Error revoking user access");    
     }
 })
 
