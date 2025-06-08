@@ -5,8 +5,24 @@ function ReportHeader() {
   
   const reportData = useContext(ReportContext);
 
-  // Get risk data from context (calculated in controller)
-  const riskData = reportData?.riskScore || { score: 0, level: 'MINIMAL', color: 'bg-green-400' };
+  // Get risk data from the riskAssessment property returned from API
+  const riskAssessment = reportData?.riskAssessment || { score: 0, riskLevel: 'Low', riskFactors: {} };
+  
+  // Map backend risk level to frontend display format
+  const mapRiskLevel = (backendLevel) => {
+    switch(backendLevel) {
+      case 'Critical': return { level: 'HIGH', color: 'bg-red-500' };
+      case 'High': return { level: 'HIGH', color: 'bg-red-500' };
+      case 'Medium': return { level: 'MEDIUM', color: 'bg-orange-500' };
+      case 'Low': return { level: 'LOW', color: 'bg-yellow-500' };
+      default: return { level: 'MINIMAL', color: 'bg-green-500' };
+    }
+  };
+  
+  const riskData = {
+    score: riskAssessment.score,
+    ...mapRiskLevel(riskAssessment.riskLevel)
+  };
 
   // Dynamic circular progress component
   const CircularProgress = ({ score, level }) => {

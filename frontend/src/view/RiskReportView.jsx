@@ -45,7 +45,7 @@ function RiskReportView(props) {
         <div style={overlayStyle}>
           <div style={spinnerCardStyle}>
             <div className="flex justify-center mb-6">
-              <Spinner className="w-16 h-16" />
+              <Spinner/>
             </div>
             <h2 className="text-xl font-semibold text-white mb-3">
               Analyzing Your Google Drive
@@ -53,13 +53,6 @@ function RiskReportView(props) {
             <p className="text-gray-200 text-sm leading-relaxed mb-4">
               We&apos;re scanning your files and analyzing sharing permissions to generate your comprehensive risk report.
             </p>
-            <div className="flex justify-center">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-              </div>
-            </div>
           </div>
         </div>
       )}

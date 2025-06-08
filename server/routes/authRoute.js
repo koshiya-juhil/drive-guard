@@ -101,6 +101,95 @@ const drive = google.drive({
   auth: oAuth2Client,
 });
 
+// Calculate risk score based on file sharing patterns
+const calculateRiskScore = (publicFiles, peopleFiles, externalFiles, email) => {
+  // Initialize score components
+  let baseScore = 0;
+  let risks = {
+    publicFilesRisk: 0,
+    externalSharingRisk: 0,
+    sensitiveContentRisk: 0,
+    collaboratorRisk: 0,
+    totalRiskyFiles: 0
+  };
+  
+  // Risk weights
+  const weights = {
+    publicFile: 10,        // Public files are highest risk
+    externalSharing: 5,    // External sharing is medium risk
+    sensitiveContent: 8,   // Sensitive content is high risk
+    excessiveSharing: 0.5  // Per-person risk for excessive sharing
+  };
+  
+  // Sensitive file types (partial list, could be expanded)
+  const sensitiveTypes = [
+    'application/vnd.google-apps.spreadsheet',  // Spreadsheets often contain sensitive data
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'application/pdf',
+    'text/csv'
+  ];
+  
+  // Calculate public file risk
+  risks.publicFilesRisk = publicFiles.length * weights.publicFile;
+  risks.totalRiskyFiles += publicFiles.length;
+  
+  // Calculate external sharing risk
+  risks.externalSharingRisk = externalFiles.length * weights.externalSharing;
+  risks.totalRiskyFiles += externalFiles.length;
+  
+  // Calculate sensitive content risk
+  const sensitivePublicFiles = publicFiles.filter(file => 
+    sensitiveTypes.includes(file.mimeType)
+  ).length;
+  
+  const sensitiveExternalFiles = externalFiles.filter(file => 
+    sensitiveTypes.includes(file.mimeType)
+  ).length;
+  
+  risks.sensitiveContentRisk = (sensitivePublicFiles * weights.sensitiveContent * 1.5) + 
+                             (sensitiveExternalFiles * weights.sensitiveContent);
+  
+  // Calculate collaborator risk (more unique people = higher risk)
+  risks.collaboratorRisk = peopleFiles.length * weights.excessiveSharing;
+  
+  // Calculate base score - sum of all risk components
+  baseScore = risks.publicFilesRisk + 
+              risks.externalSharingRisk + 
+              risks.sensitiveContentRisk + 
+              risks.collaboratorRisk;
+  
+  // Normalize score to 0-100 range with logarithmic scaling to prevent extreme values
+  // Uses a log function that grows quickly at first but slows down for higher values
+  let normalizedScore = 0;
+  if (baseScore > 0) {
+    normalizedScore = Math.min(100, Math.round(20 * Math.log10(baseScore + 1)));
+  }
+  
+  // Categorize risk level
+  let riskLevel = "Low";
+  if (normalizedScore >= 70) {
+    riskLevel = "Critical";
+  } else if (normalizedScore >= 50) {
+    riskLevel = "High";
+  } else if (normalizedScore >= 30) {
+    riskLevel = "Medium";
+  }
+  
+  return {
+    score: normalizedScore,
+    riskLevel: riskLevel,
+    riskFactors: {
+      publicFiles: publicFiles.length,
+      externallySharedFiles: externalFiles.length,
+      sensitivePublicFiles: sensitivePublicFiles,
+      sensitiveExternalFiles: sensitiveExternalFiles,
+      uniqueCollaborators: peopleFiles.length
+    },
+    riskComponents: risks
+  };
+};
+
 router.get("/getReport", async (req, res) => {
   const email = req.query.email;
   const user = await User.findOne({ email: email });
@@ -217,10 +306,14 @@ router.get("/getReport", async (req, res) => {
       }
     }
 
+    // Calculate risk score
+    const riskScore = calculateRiskScore(publicFiles, peopleFiles, externalFiles, email);
+
     res.status(200).send({
       publicFiles,
       peopleFiles,
       externalFiles,
+      riskAssessment: riskScore
     });
   } catch (error) {
     console.log("Error retrieving report: ", error);

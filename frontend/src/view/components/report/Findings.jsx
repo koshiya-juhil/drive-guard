@@ -7,8 +7,20 @@ function Findings() {
   const publicFilesCount = reportData?.publicFiles?.length || 0;
   const peopleFilesCount = reportData?.peopleFiles?.length || 0;
   const externalFilesCount = reportData?.externalFiles?.length || 0;
-  const riskLevel = reportData?.riskScore?.level || 'MINIMAL';
-
+  
+  // Get risk assessment data from API
+  const riskAssessment = reportData?.riskAssessment || { 
+    score: 0, 
+    riskLevel: 'Low',
+    riskFactors: {
+      publicFiles: 0,
+      externallySharedFiles: 0,
+      sensitivePublicFiles: 0,
+      sensitiveExternalFiles: 0,
+      uniqueCollaborators: 0
+    }
+  };
+  
   // Get severity level and bars for each finding
   const getSeverityBars = (type, count) => {
     let severity = 'LOW';
@@ -28,11 +40,16 @@ function Findings() {
       else if (count > 15) { severity = 'MEDIUM'; barCount = 3; }
       else if (count > 5) { severity = 'MEDIUM'; barCount = 2; }
       else if (count > 0) { severity = 'LOW'; barCount = 1; }
+    } else if (type === 'sensitive') {
+      if (count > 10) { severity = 'HIGH'; barCount = 4; }
+      else if (count > 5) { severity = 'HIGH'; barCount = 3; }
+      else if (count > 1) { severity = 'MEDIUM'; barCount = 2; }
+      else if (count > 0) { severity = 'LOW'; barCount = 1; }
     }
 
     const getBarColor = (severity) => {
       switch(severity) {
-        case 'HIGH': return 'bg-orange-500';
+        case 'HIGH': return 'bg-red-500';
         case 'MEDIUM': return 'bg-orange-400';
         case 'LOW': return 'bg-yellow-400';
         default: return 'bg-gray-300';
@@ -58,7 +75,7 @@ function Findings() {
     <div className="px-12 py-8 max-md:px-5">
       <h2 className="text-2xl font-medium text-gray-700 mb-4">Findings</h2>
       <p className="text-gray-500 mb-8 leading-relaxed">
-        Your Google Drive is considered at {riskLevel.toLowerCase()} risk for data leaking and insider threats. Here are some of the findings we&apos;ve discovered:
+        Your Google Drive is considered at <span className="font-medium">{riskAssessment.riskLevel.toLowerCase()}</span> risk (score: {riskAssessment.score}/100) for data leaking and insider threats. Here are some of the findings we&apos;ve discovered:
       </p>
       
       <div className="px-5 border border-solid shadow-md rounded-lg overflow-hidden bg-white">
@@ -66,7 +83,6 @@ function Findings() {
         {publicFilesCount > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-solid border-gray-200">
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-base">1.</span>
               <span className="text-gray-600 font-medium mr-1">{publicFilesCount}</span>
               <span className="text-gray-600">files are publicly accessible for anyone with the link</span>
             </div>
@@ -74,11 +90,21 @@ function Findings() {
           </div>
         )}
 
+        {/* Sensitive Public Files Finding */}
+        {riskAssessment.riskFactors.sensitivePublicFiles > 0 && (
+          <div className="flex items-center justify-between px-6 py-4 border-b border-solid border-gray-200">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-medium mr-1">{riskAssessment.riskFactors.sensitivePublicFiles}</span>
+              <span className="text-gray-600">sensitive files (spreadsheets, PDFs, etc.) are publicly accessible</span>
+            </div>
+            {getSeverityBars('sensitive', riskAssessment.riskFactors.sensitivePublicFiles)}
+          </div>
+        )}
+
         {/* People Access Finding */}
         {peopleFilesCount > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-solid border-gray-200">
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-base">2.</span>
               <span className="text-gray-600 font-medium mr-1">{peopleFilesCount}</span>
               <span className="text-gray-600">people with access to your google drive</span>
             </div>
@@ -88,9 +114,8 @@ function Findings() {
 
         {/* External Files Finding */}
         {externalFilesCount > 0 && (
-          <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-solid border-gray-200">
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-base">3.</span>
               <span className="text-gray-600 font-medium mr-1">{externalFilesCount}</span>
               <span className="text-gray-600">files are shared externally</span>
             </div>
@@ -98,11 +123,21 @@ function Findings() {
           </div>
         )}
 
+        {/* Sensitive External Files Finding */}
+        {riskAssessment.riskFactors.sensitiveExternalFiles > 0 && (
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-medium mr-1">{riskAssessment.riskFactors.sensitiveExternalFiles}</span>
+              <span className="text-gray-600">sensitive files are shared with external collaborators</span>
+            </div>
+            {getSeverityBars('sensitive', riskAssessment.riskFactors.sensitiveExternalFiles)}
+          </div>
+        )}
+
         {/* No findings case */}
         {publicFilesCount === 0 && peopleFilesCount === 0 && externalFilesCount === 0 && (
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-base">1.</span>
               <span className="text-gray-600 font-medium mr-1">0</span>
               <span className="text-gray-600">critical security issues found - your Google Drive appears secure</span>
             </div>
